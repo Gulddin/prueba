@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Final</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght400;600;800&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the calculator grid and typography */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0e0e0f; /* Light gray background */
+        }
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 24px;
+            background-color: #31739c;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            border-radius: 1.5rem; /* More rounded */
+        }
+        .btn {
+            padding: 1rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            transition: all 0.1s;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        #display {
+            grid-column: 1 / -1;
+            background-color: #e2e8f0; /* Softer background for display */
+            color: #1a202c;
+            min-height: 120px; /* Increased height for better lyric visibility */
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 1rem 1.5rem;
+            font-size: 2.5rem;
+            border-radius: 1rem;
+            overflow-x: auto; /* Still allow scrolling for long numbers */
+            white-space: normal; /* Allow text to wrap for lyrics */
+            margin-bottom: 12px;
+            font-weight: 800;
+            /* Transition will be handled dynamically in JS for the sequence, but kept here for number mode */
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; 
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .calculator-grid {
+                width: 100%;
+                max-width: none;
+                padding: 16px;
+                gap: 10px;
+                border-radius: 0;
+            }
+            #display {
+                font-size: 2rem;
+                min-height: 100px; /* Adjusted min-height for mobile */
+                padding: 0.8rem 1rem;
+            }
+            .btn {
+                padding: 0.8rem;
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="w-full max-w-md">
+        <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">Calculo Final</h1>
+        <div class="calculator-grid">
+            
+            <div id="display"></div>
+
+            <!-- AC Button --><button class="btn bg-red-400 text-white hover:bg-red-500" onclick="clearAll()">AC</button>
+            <!-- Delete Button --><button class="btn bg-gray-300 text-gray-800 hover:bg-gray-400" onclick="deleteLast()">DEL</button>
+            <!-- Operator Buttons --><button class="btn bg-indigo-500 text-white hover:bg-indigo-600" onclick="handleInput('/')">/</button>
+            <button class="btn bg-indigo-500 text-white hover:bg-indigo-600" onclick="handleInput('*')">x</button>
+            
+            <!-- Numbers 7-9 and '-' --><button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('7')">7</button>
+            <button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('8')">8</button>
+            <button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('9')">9</button>
+            <button class="btn bg-indigo-500 text-white hover:bg-indigo-600" onclick="handleInput('-')">-</button>
+
+            <!-- Numbers 4-6 and '+' --><button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('4')">4</button>
+            <button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('5')">5</button>
+            <button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('6')">6</button>
+            <button class="btn bg-indigo-500 text-white hover:bg-indigo-600" onclick="handleInput('+')">+</button>
+
+            <!-- Numbers 1-3 and '.' --><button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('1')">1</button>
+            <button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('2')">2</button>
+            <button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('3')">3</button>
+            <button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300" onclick="handleInput('.')">.</button>
+
+            <!-- Number 0 (Spans 2 columns) --><button class="btn bg-gray-200 text-gray-800 hover:bg-gray-300 col-span-2" onclick="handleInput('0')">0</button>
+
+            <!-- Equals Button - The Plot Twist Trigger --><button class="btn col-span-2 bg-pink-500 text-white hover:bg-pink-600 active:bg-pink-700 text-2xl font-extrabold" onclick="handleEquals()">=</button>
+
+        </div>
+    </div>
+
+    <script>
+        // --- API Constants ---
+        // The API key is set to an empty string. The Canvas environment will automatically inject the key at runtime.
+        
+        // --- Core Calculator State ---
+        let currentInput = '';
+        const display = document.getElementById('display');
+        let plotTwistMode = false;
+        let audioPlaying = false; // Flag to prevent multiple audio overlaps
+        let isSequenceRunning = false; // Flag to prevent multiple sequence starts
+
+        // --- The New Plot Twist Sequence (Text and Duration in milliseconds) ---
+        const plotTwistSequence = [
+            // "Mahirap naman kasi talaga ang magparaya" (3s fade)
+            { text: "Dayita has venido a mi vida", duration: 3000 },
+            // "pero mahirap din ang hindi ipaglaban" (4s fade)
+            { text: "y eres una persona espectacular", duration: 4000 },
+            // "Ang taong Mahal mo" (2s fade)
+            { text: "te quiero muchisimo", duration: 2000 },
+            // "Kung pa pipiliin ka sa love story na gusto mo" (3s fade)
+            { text: "y se que eres una gran mujer", duration: 3000 }, 
+            // "Ano ang pipiliin mo ?" (2s fade)
+            { text: "Ano ang pipiliin mo ?", duration: 2000 },
+            // "Yung taong mahal ka kaya kang ipaglaban" (4s fade)
+            { text: "Yung taong mahal ka kaya kang ipaglaban", duration: 4000 },
+            // "Hanggang Patayan" (1.5s fade)
+            { text: "Hanggang Patayan", duration: 1500 },
+            // "O yung taong mahal mo na takot lumaban" (2.5s fade)
+            { text: "O yung taong mahal mo na takot lumaban", duration: 2500 }, // <-- FIXED: Added comma here
+            // "At handang sumuko na lamang" (stays until cleared)
+            { text: "Quieres ser mi novia?", duration: Infinity }, // <-- FIXED: Changed 'Enfity' to 'Infinity' and corrected spelling
+        ];
+
+        // --- TTS Utility Functions (Converts Base64 PCM to playable WAV Blob) ---
+
+        /** Converts Base64 string to ArrayBuffer. */
+        function base64ToArrayBuffer(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+
+        // --- Helper Functions ---
+
+        function updateDisplay(text = currentInput) {
+            // If in plot twist mode, update appearance for the dramatic sequence
+            if (plotTwistMode) {
+                display.style.fontSize = '1.5rem';
+                display.style.textAlign = 'center';
+                display.style.color = '#e91e63'; // Pink for heartache
+                display.innerHTML = text;
+                display.style.whiteSpace = 'normal';
+                display.style.justifyContent = 'center';
+                display.style.opacity = '1'; // Ensure it is visible before fading
+                display.style.transform = 'translateY(0)'; // Ensure it is in position
+                display.style.transition = 'none'; // Clear animation for immediate text change
+            } else {
+                // Reset to standard calculator display
+                display.style.fontSize = '2.5rem';
+                display.style.textAlign = 'right';
+                display.style.color = '#1a202c';
+                display.innerHTML = text || '0';
+                display.style.whiteSpace = 'nowrap';
+                display.style.justifyContent = 'flex-end';
+                display.style.transition = 'opacity 0.3s ease-in-out'; // Reset to default transition
+                display.style.opacity = '1';
+                display.style.transform = 'translateY(0)';
+            }
+        }
+
+        // --- Calculator Actions ---
+
+        function clearAll() {
+            currentInput = '';
+            plotTwistMode = false;
+            isSequenceRunning = false;
+            display.classList.remove('animate-pulse', 'bg-pink-100'); 
+            // Important: Clear all dynamic style properties set during the sequence
+            display.style.opacity = '1';
+            display.style.transform = 'translateY(0)';
+            display.style.transition = 'opacity 0.3s ease-in-out'; 
+            updateDisplay();
+        }
+
+        function deleteLast() {
+            if (plotTwistMode) {
+                clearAll(); // If in twist mode, clear the whole twist
+                return;
+            }
+            currentInput = currentInput.slice(0, -1);
+            updateDisplay();
+        }
+
+        function handleInput(value) {
+            // Any new input clears the sequence/lyric and starts a new calculation
+            if (plotTwistMode || isSequenceRunning) {
+                clearAll();
+            }
+
+            // Standard calculator input logic
+            const lastChar = currentInput.slice(-1);
+            const isOperator = (c) => ['+', '-', '*', '/'].includes(c);
+            
+            if (isOperator(value) && isOperator(lastChar)) {
+                currentInput = currentInput.slice(0, -1) + value;
+            } else {
+                currentInput += value;
+            }
+            updateDisplay();
+        }
+
+        /** Runs the entire dramatic sequence line-by-line with custom timings. */
+        async function runPlotTwistSequence() {
+            if (isSequenceRunning) return; 
+            isSequenceRunning = true;
+            plotTwistMode = true;
+
+            const FADE_DURATION_MS = 500; // Fixed time for the visual fade animation itself
+
+            for (let i = 0; i < plotTwistSequence.length; i++) {
+                const line = plotTwistSequence[i];
+                
+                // 1. Display line (resets opacity/position)
+                updateDisplay(line.text);
+                
+                // 3. Check for the final line
+                if (line.duration === Infinity) {
+                    // Final line remains visible
+                    isSequenceRunning = false;
+                    break; 
+                }
+                
+                // 4. Wait for the specified duration (Time on screen before fade begins)
+                const holdTime = line.duration - FADE_DURATION_MS;
+                await new Promise(resolve => setTimeout(resolve, holdTime > 0 ? holdTime : 1)); // Wait
+                
+                // 5. Apply fade out effect
+                display.style.transition = `opacity ${FADE_DURATION_MS}ms ease-out, transform ${FADE_DURATION_MS}ms ease-out`;
+                display.style.opacity = '0';
+                display.style.transform = 'translateY(-10px)';
+                
+                // 6. Wait for the fade animation to complete
+                await new Promise(resolve => setTimeout(resolve, FADE_DURATION_MS));
+            }
+        }
+
+
+        async function handleEquals() {
+            // Reset calculator input state
+            currentInput = ''; 
+            
+            // Immediately stop any existing sequence and start a new one
+            isSequenceRunning = false; 
+            
+            await runPlotTwistSequence();
+        }
+
+        // Initialize display on load
+        updateDisplay(); 
+    </script>
+</body>
+</html>
